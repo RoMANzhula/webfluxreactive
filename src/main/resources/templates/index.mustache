@@ -6,12 +6,15 @@
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
+    <script>
+        let token = '';
+    </script>
 </head>
 <body>
     Hello, {{user}}!
     <form
             onsubmit="
-               const payload = {
+               let payload = {
                    method: 'post',
                    headers: {
                 'Content-type': 'application/x-www-form-urlencoded'
@@ -21,7 +24,7 @@
 
                fetch('/login', payload)
                .then(response => response.text())
-               .then(text => console.log(text));
+               .then(t => token = t);
 
                 return false;
                 "
@@ -31,5 +34,52 @@
             <input type="password" name="password">
             <input type="submit" value="Sign in">
     </form>
+
+<input type="button" value="controller" onclick="
+    fetch('/controller', {
+    // method: 'GET',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    }
+})
+.then(response => {
+    if (response.ok) {
+        return response.text();
+    } else {
+        throw new Error('Failed to fetch data from /controller');
+    }
+})
+.then(data => {
+    console.log('Data from /controller:', data);
+})
+.catch(error => {
+    console.error('Error fetching data from /controller:', error);
+});
+"/>
+
+<input type="button" value="hello" onclick="
+    fetch('/hello', {
+    // method: 'GET',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    }
+})
+.then(response => {
+    if (response.ok) {
+        return response.text();
+    } else {
+        throw new Error('Failed to fetch data from /hello');
+    }
+})
+.then(data => {
+    console.log('Data from /hello:', data);
+})
+.catch(error => {
+    console.error('Error fetching data from /hello:', error);
+});
+"/>
+
 </body>
 </html>

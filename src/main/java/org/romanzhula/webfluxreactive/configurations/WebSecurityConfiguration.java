@@ -1,27 +1,24 @@
 package org.romanzhula.webfluxreactive.configurations;
 
-import org.romanzhula.webfluxreactive.services.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
+@RequiredArgsConstructor
 public class WebSecurityConfiguration {
-    @Bean
-    public ReactiveUserDetailsService reactiveUserDetailsService(UserService usersService) {
-        return username -> usersService.findByUsername(username).map(user -> {
-            return user;
-        });
-    }
+    private final AuthenticationManager authenticationManager;
+    private final SecurityContextRepository securityContextRepository;
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -37,22 +34,35 @@ public class WebSecurityConfiguration {
         };
     }
 
-//    @Bean
-//    public PasswordEncoder passwordEncoder() {
-//        return NoOpPasswordEncoder.getInstance();
-//    }
-
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity httpSecurity) {
         httpSecurity
+                .exceptionHandling( handling -> handling
+                        .authenticationEntryPoint(
+                                (serverWebExchange, exception) ->
+                                        Mono.fromRunnable(
+                                                () -> serverWebExchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED)
+                                        )
+                        )
+                        .accessDeniedHandler(
+                                (serverWebExchange, exception) ->
+                                        Mono.fromRunnable(
+                                                () -> serverWebExchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN)
+                                        )
+                        )
+                )
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .authorizeExchange((exchanges) -> exchanges
-                        .pathMatchers("/", "/login", "/favicon.ico").permitAll()
+                .cors(ServerHttpSecurity.CorsSpec::disable)
+                .authenticationManager(authenticationManager)
+                .securityContextRepository(securityContextRepository)
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/", "/login").permitAll()
                         .pathMatchers("/controller").hasRole("ADMIN")
                         .anyExchange().authenticated()
                 )
-                .formLogin(formLogin -> {})
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+
                 ;
 
         return httpSecurity.build();
